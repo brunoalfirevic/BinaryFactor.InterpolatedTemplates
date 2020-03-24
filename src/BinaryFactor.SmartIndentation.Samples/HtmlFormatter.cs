@@ -17,7 +17,7 @@
 
             if (formatArg.HasFormatSpecifier("pretty", out rest))
             {
-                return Renderable.Create(rest, preprocess: true, conformToAmbientIndentation: true);
+                return Renderable.Create(rest, conformToAmbientIndentation: true);
             }
 
             return base.GetRenderable(formatArg);

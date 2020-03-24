@@ -18,7 +18,7 @@
 
         public string Format(object? o)
         {
-            return Render(Renderable.Create($"{o}"), ambientIndentation: "", firstLineNeedsAmbientIndentation: false);
+            return Render(Renderable.Create($"{o}"), ambientIndentation: "");
         }
 
         protected virtual string PreprocessTemplate(string str)
@@ -37,7 +37,7 @@
             {
                 FormattableString fs => Renderable.Create(fs),
                 IEnumerable<FormattableString?> fss => Renderable.Create(fss),
-                _ => Renderable.Create(formatArg, preprocess: false, conformToAmbientIndentation: false),
+                _ => Renderable.Create(formatArg, conformToAmbientIndentation: false),
             };
         }
 
@@ -50,45 +50,41 @@
             };
         }
 
-        private string Render(Renderable template, string ambientIndentation, bool firstLineNeedsAmbientIndentation)
+        private string Render(Renderable template, string ambientIndentation)
         {
             return template switch
             {
-                CompoundRenderable cr => Render(cr, ambientIndentation, firstLineNeedsAmbientIndentation),
-                RenderableTemplate rt => Render(rt, ambientIndentation, firstLineNeedsAmbientIndentation),
-                RenderableData rd => Render(rd, ambientIndentation, firstLineNeedsAmbientIndentation),
+                CompoundRenderable cr => Render(cr, ambientIndentation),
+                RenderableTemplate rt => Render(rt, ambientIndentation),
+                RenderableData rd => Render(rd, ambientIndentation),
                 _ => throw new ArgumentException(),
             };
         }
 
-        private string Render(CompoundRenderable renderable, string ambientIndentation, bool firstLineNeedsAmbientIndentation)
+        private string Render(CompoundRenderable renderable, string ambientIndentation)
         {
             var renderResults = renderable
                 .Renderables
-                .Select((template, i) => Render(template, ambientIndentation, firstLineNeedsAmbientIndentation || i > 0));
+                .Select((template, i) => Render(template, ambientIndentation));
 
-            var combinator = renderable.Combinator ?? (strings => string.Join(Environment.NewLine, strings));
+            var combinator = renderable.Combinator ??
+                             ((strings, ambientIndentation) =>
+                                string.Join(Environment.NewLine + ambientIndentation, strings));
 
-            return combinator(renderResults);
+            return combinator(renderResults, ambientIndentation);
         }
 
-        private string Render(RenderableData renderable, string ambientIndentation, bool firstLineNeedsAmbientIndentation)
+        private string Render(RenderableData renderable, string ambientIndentation)
         {
             var content = FormatData(renderable.FormatArg);
 
-            if (firstLineNeedsAmbientIndentation)
-                content = ambientIndentation + content;
-
-            if (renderable.Preprocess)
-                content = PreprocessTemplate(content);
-
             if (renderable.ConformToAmbientIndentation)
-                content = IndentationProcessor.ProcessStringIndentation(content, this.tabWidth, ambientIndentation, firstLineNeedsAmbientIndentation);
+                content = IndentationProcessor.ProcessStringIndentation(content, this.tabWidth, ambientIndentation);
 
             return content;
         }
 
-        private string Render(RenderableTemplate renderable, string ambientIndentation, bool firstLineNeedsAmbientIndentation)
+        private string Render(RenderableTemplate renderable, string ambientIndentation)
         {
             static string Replace(string str, string replacement, int startPosition, int endPosition)
             {
@@ -99,11 +95,10 @@
 
             var content = renderable.TemplateString;
 
-            if (renderable.Preprocess)
-                content = PreprocessTemplate(content);
+            content = PreprocessTemplate(content);
 
             if (renderable.ConformToAmbientIndentation)
-                content = IndentationProcessor.ProcessStringIndentation(content, this.tabWidth, ambientIndentation, firstLineNeedsAmbientIndentation);
+                content = IndentationProcessor.ProcessStringIndentation(content, this.tabWidth, ambientIndentation);
 
             var guidReplacingFormatter = new GuidReplacingFormatter();
 
@@ -124,11 +119,11 @@
                 }
                 else
                 {
-                    var newAmbientIndentation = position.IsFoundOnFirstLine && !firstLineNeedsAmbientIndentation
+                    var newAmbientIndentation = position.IsFoundOnFirstLine
                         ? ambientIndentation + position.Indentation
                         : position.Indentation;
 
-                    var replacement = Render(formatArgRenderable, newAmbientIndentation, firstLineNeedsAmbientIndentation: false);
+                    var replacement = Render(formatArgRenderable, newAmbientIndentation);
 
                     content = Replace(content, replacement, position.FoundPosition, position.FoundEndPosition);
                 }
@@ -151,15 +146,15 @@
                     formattableString.GetArguments());
             }
 
-            public static Renderable Create(IEnumerable<FormattableString?> fss, Func<IEnumerable<string>, string>? combinator = null)
+            public static Renderable Create(IEnumerable<FormattableString?> fss, Func<IEnumerable<string>, string, string>? combinator = null)
             {
-                var renderables = fss.Where(fss => fss != null).Select(fs => Create(fs!)).ToList();
+                var renderables = fss.Where(fs => fs != null).Select(fs => Create(fs!)).ToList();
                 return new CompoundRenderable(renderables, combinator);
             }
 
-            public static Renderable Create(FormatArg formatArg, bool preprocess = false, bool conformToAmbientIndentation = false)
+            public static Renderable Create(FormatArg formatArg, bool conformToAmbientIndentation = false)
             {
-                return new RenderableData(formatArg, preprocess, conformToAmbientIndentation);
+                return new RenderableData(formatArg, conformToAmbientIndentation);
             }
 
             public abstract bool IsEmpty { get; }
@@ -178,22 +173,19 @@
             public string TemplateString { get; }
             public object?[] TemplateArguments { get; }
 
-            public bool Preprocess => true;
             public bool ConformToAmbientIndentation => true;
             public override bool IsEmpty => false;
         }
 
         class RenderableData : Renderable
         {
-            public RenderableData(FormatArg formatArg, bool preprocess, bool conformToAmbientIndentation)
+            public RenderableData(FormatArg formatArg, bool conformToAmbientIndentation)
             {
                 FormatArg = formatArg;
-                Preprocess = preprocess;
                 ConformToAmbientIndentation = conformToAmbientIndentation;
             }
 
             public FormatArg FormatArg { get; }
-            public bool Preprocess { get; }
             public bool ConformToAmbientIndentation { get; }
 
             public override bool IsEmpty => false;
@@ -201,14 +193,14 @@
 
         class CompoundRenderable : Renderable
         {
-            public CompoundRenderable(IList<Renderable> renderables, Func<IEnumerable<string>, string>? combinator)
+            public CompoundRenderable(IList<Renderable> renderables, Func<IEnumerable<string>, string, string>? combinator)
             {
                 Renderables = renderables;
                 Combinator = combinator;
             }
 
             public IList<Renderable> Renderables { get; }
-            public Func<IEnumerable<string>, string>? Combinator { get; }
+            public Func<IEnumerable<string>, string, string>? Combinator { get; }
 
             public override bool IsEmpty => Renderables.All(t => t.IsEmpty);
         }
@@ -279,7 +271,7 @@
 
         class IndentationProcessor
         {
-            public static string ProcessStringIndentation(string str, int tabWidth, string ambientIndentation, bool firstLineNeedsAmbientIndentation)
+            public static string ProcessStringIndentation(string str, int tabWidth, string ambientIndentation)
             {
                 var stringLines = str.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
 
@@ -287,13 +279,7 @@
                     return "";
 
                 if (stringLines.Length == 1)
-                {
-                    var line = stringLines[0];
-                    if (firstLineNeedsAmbientIndentation && !string.IsNullOrWhiteSpace(line))
-                        line = AddIndentation(line, ambientIndentation);
-
-                    return line;
-                }
+                    return stringLines[0];
 
                 var removedEmptyFirstLine = false;
                 var firstIndex = 0;
@@ -312,7 +298,7 @@
                     if (removedEmptyFirstLine || i > firstIndex)
                         line = RemoveIndentation(line, baselineIndentationLength, tabWidth);
 
-                    if ((firstLineNeedsAmbientIndentation || i > firstIndex) && !string.IsNullOrWhiteSpace(line))
+                    if (i > firstIndex && !string.IsNullOrWhiteSpace(line))
                         line = AddIndentation(line, ambientIndentation);
 
                     stringLines[i] = line;
