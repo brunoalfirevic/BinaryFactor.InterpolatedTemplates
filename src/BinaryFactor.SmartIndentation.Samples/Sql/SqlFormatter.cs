@@ -1,9 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace BinaryFactor.SmartIndentation.Samples
+﻿namespace BinaryFactor.SmartIndentation.Samples.Sql
 {
-    public class SqlFormatter: SmartIndentationFormatter
+    using System;
+    using System.Collections.Generic;
+
+    public class SqlFormatter : SmartIndentationFormatter
     {
         private readonly IDictionary<string, SqlParam> sqlParameters;
 

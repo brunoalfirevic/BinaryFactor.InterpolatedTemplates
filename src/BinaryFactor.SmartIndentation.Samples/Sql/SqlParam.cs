@@ -1,7 +1,7 @@
-﻿using System;
-
-namespace BinaryFactor.SmartIndentation.Samples
+﻿namespace BinaryFactor.SmartIndentation.Samples.Sql
 {
+    using System;
+
     public class SqlParam
     {
         public SqlParam(object? value)

@@ -68,8 +68,7 @@
                 .Select((template, i) => Render(template, ambientIndentation));
 
             var combinator = renderable.Combinator ??
-                             ((strings, ambientIndentation) =>
-                                string.Join(Environment.NewLine + ambientIndentation, strings));
+                             ((strings, ambientIndentation) => string.Join(Environment.NewLine + ambientIndentation, strings));
 
             return combinator(renderResults, ambientIndentation);
         }
