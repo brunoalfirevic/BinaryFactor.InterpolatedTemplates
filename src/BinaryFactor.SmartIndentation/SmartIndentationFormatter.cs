@@ -4,7 +4,6 @@
     using System.Collections.Generic;
     using System.Globalization;
     using System.Linq;
-    using System.Runtime.CompilerServices;
 
     partial class SmartIndentationFormatter
     {
@@ -19,136 +18,218 @@
 
         public string Format(object? o)
         {
-            return Format($"{o}", "", firstLineNeedsAmbientIndentation: false);
+            return Render(Renderable.Create($"{o}"), ambientIndentation: "", firstLineNeedsAmbientIndentation: false);
         }
 
-        protected virtual string PreprocessFormatString(string str)
+        protected virtual string PreprocessTemplate(string str)
         {
             return str;
         }
 
-        protected virtual bool ShouldFormatWithSmartIndentation(FormatData formatData, out IEnumerable<FormattableString>? formattableStrings, out bool removeEntireLineIfEmpty)
+        protected virtual string FormatData(FormatArg formatArg)
         {
-            switch (formatData.Arg)
-            {
-                case FormattableString fs:
-                {
-                    formattableStrings = new[] { fs };
-                    removeEntireLineIfEmpty = true;
-                    return true;
-                }
-
-                case IEnumerable<FormattableString> fss:
-                {
-                    formattableStrings = fss;
-                    removeEntireLineIfEmpty = true;
-                    return true;
-                }
-
-                default:
-                {
-                    formattableStrings = null;
-                    removeEntireLineIfEmpty = false;
-                    return false;
-                }
-            }
+            return FormatDefault(formatArg);
         }
 
-        protected virtual string FormatDefault(FormatData formatData)
+        protected virtual Renderable GetRenderable(FormatArg formatArg)
         {
-            return formatData.Arg switch
+            return formatArg.Arg switch
             {
-                IFormattable formattable => formattable.ToString(formatData.FormatSpecifier, this.defaultFormatProvider),
-                _ => formatData.Arg?.ToString() ?? ""
+                FormattableString fs => Renderable.Create(fs),
+                IEnumerable<FormattableString?> fss => Renderable.Create(fss),
+                _ => Renderable.Create(formatArg, preprocess: false, conformToAmbientIndentation: false),
             };
         }
 
-        private string Format(FormattableString formattableString, string ambientIndentation, bool firstLineNeedsAmbientIndentation)
+        protected string FormatDefault(FormatArg formatArg)
         {
-            var processedFormatString = PreprocessFormatString(formattableString.Format);
+            return formatArg.Arg switch
+            {
+                IFormattable formattable => formattable.ToString(formatArg.FormatSpecifier, this.defaultFormatProvider),
+                _ => formatArg.Arg?.ToString() ?? ""
+            };
+        }
 
-            processedFormatString = IndentationProcessor.ProcessStringIndentation(processedFormatString, this.tabWidth, ambientIndentation, firstLineNeedsAmbientIndentation);
+        private string Render(Renderable template, string ambientIndentation, bool firstLineNeedsAmbientIndentation)
+        {
+            return template switch
+            {
+                CompoundRenderable cr => Render(cr, ambientIndentation, firstLineNeedsAmbientIndentation),
+                RenderableTemplate rt => Render(rt, ambientIndentation, firstLineNeedsAmbientIndentation),
+                RenderableData rd => Render(rd, ambientIndentation, firstLineNeedsAmbientIndentation),
+                _ => throw new ArgumentException(),
+            };
+        }
+
+        private string Render(CompoundRenderable renderable, string ambientIndentation, bool firstLineNeedsAmbientIndentation)
+        {
+            var renderResults = renderable
+                .Renderables
+                .Select((template, i) => Render(template, ambientIndentation, firstLineNeedsAmbientIndentation || i > 0));
+
+            var combinator = renderable.Combinator ?? (strings => string.Join(Environment.NewLine, strings));
+
+            return combinator(renderResults);
+        }
+
+        private string Render(RenderableData renderable, string ambientIndentation, bool firstLineNeedsAmbientIndentation)
+        {
+            var content = FormatData(renderable.FormatArg);
+
+            if (firstLineNeedsAmbientIndentation)
+                content = ambientIndentation + content;
+
+            if (renderable.Preprocess)
+                content = PreprocessTemplate(content);
+
+            if (renderable.ConformToAmbientIndentation)
+                content = IndentationProcessor.ProcessStringIndentation(content, this.tabWidth, ambientIndentation, firstLineNeedsAmbientIndentation);
+
+            return content;
+        }
+
+        private string Render(RenderableTemplate renderable, string ambientIndentation, bool firstLineNeedsAmbientIndentation)
+        {
+            static string Replace(string str, string replacement, int startPosition, int endPosition)
+            {
+                return str
+                    .Remove(startPosition, endPosition - startPosition + 1)
+                    .Insert(startPosition, replacement);
+            }
+
+            var content = renderable.TemplateString;
+
+            if (renderable.Preprocess)
+                content = PreprocessTemplate(content);
+
+            if (renderable.ConformToAmbientIndentation)
+                content = IndentationProcessor.ProcessStringIndentation(content, this.tabWidth, ambientIndentation, firstLineNeedsAmbientIndentation);
 
             var guidReplacingFormatter = new GuidReplacingFormatter();
 
-            var result = string.Format(guidReplacingFormatter, processedFormatString, formattableString.GetArguments());
+            content = string.Format(guidReplacingFormatter, content, renderable.TemplateArguments);
 
-            foreach (var formatReplacement in guidReplacingFormatter.FormatReplacements)
+            foreach (var keyValue in guidReplacingFormatter.FormatReplacements)
             {
-                var replacementInstructions = FormatArgument(result, formatReplacement, ambientIndentation, firstLineNeedsAmbientIndentation);
-                result = replacementInstructions.ExecuteReplacement(result);
+                var guid = keyValue.Key;
+                var formatArg = keyValue.Value;
+
+                var position = StringFindAnalysis.FindWithAnalysis(content, guid);
+
+                var formatArgRenderable = GetRenderable(formatArg);
+
+                if (position.OccupiesEntireLine && formatArgRenderable.IsEmpty && formatArgRenderable.RemoveEntireLineIfEmpty)
+                {
+                    content = Replace(content, "", position.LineReplaceStartPosition, position.LineReplaceEndPosition);
+                }
+                else
+                {
+                    var newAmbientIndentation = position.IsFoundOnFirstLine && !firstLineNeedsAmbientIndentation
+                        ? ambientIndentation + position.Indentation
+                        : position.Indentation;
+
+                    var replacement = Render(formatArgRenderable, newAmbientIndentation, firstLineNeedsAmbientIndentation: false);
+
+                    content = Replace(content, replacement, position.FoundPosition, position.FoundEndPosition);
+                }
             }
 
-            return result;
+            return content;
         }
 
-        private ReplacementInstructions FormatArgument(string formatString, FormatData formatData, string ambientIndentation, bool firstLineNeededAmbientIndentation)
+        protected abstract class Renderable
         {
-            var findResult = StringFindAnalysis.FindWithAnalysis(formatString, formatData.Guid);
+            public static readonly Renderable Empty = new CompoundRenderable(new List<Renderable>(), null);
 
-            if (ShouldFormatWithSmartIndentation(formatData, out var fss, out var removeEntireLineIfEmpty))
+            public static Renderable Create(FormattableString formattableString)
             {
-                fss = fss.Where(fs => fs != null);
-
-                if (removeEntireLineIfEmpty && findResult.OccupiesEntireLine && !fss.Any())
-                    return new ReplacementInstructions("", findResult.LineReplaceStartPosition, findResult.LineReplaceEndPosition);
-
-                var newAmbientIndentation = !findResult.IsFoundOnFirstLine || firstLineNeededAmbientIndentation
-                    ? findResult.Indentation
-                    : ambientIndentation + findResult.Indentation;
-
-                var replacement = string.Join(
-                    Environment.NewLine,
-                    fss.Select((fs, i) => Format(fs, newAmbientIndentation, i > 0)));
-
-                return new ReplacementInstructions(replacement, findResult.FoundPosition, findResult.FoundEndPosition);
+                if (formattableString == null)
+                    return Empty;
+                
+                return new RenderableTemplate(
+                    formattableString.Format,
+                    formattableString.GetArguments());
             }
-            else
+
+            public static Renderable Create(IEnumerable<FormattableString?> fss, Func<IEnumerable<string>, string>? combinator = null)
             {
-                var replacement = FormatDefault(formatData);
-                return new ReplacementInstructions(replacement, findResult.FoundPosition, findResult.FoundEndPosition);
+                var renderables = fss.Where(fss => fss != null).Select(fs => Create(fs!)).ToList();
+                return new CompoundRenderable(renderables, combinator);
             }
+
+            public static Renderable Create(FormatArg formatArg, bool preprocess = false, bool conformToAmbientIndentation = false)
+            {
+                return new RenderableData(formatArg, preprocess, conformToAmbientIndentation);
+            }
+
+            public abstract bool IsEmpty { get; }
+
+            public bool RemoveEntireLineIfEmpty => true;
         }
 
-        protected class Template
+        class RenderableTemplate : Renderable
         {
-            public Template(FormattableString formattableString)
+            public RenderableTemplate(string templateString, object?[] templateArguments)
             {
-                TemplateString = formattableString.Format;
-                TemplateArguments = formattableString.GetArguments() ?? new object[] { };
-            }
-
-            public Template(string plainString)
-            {
-                TemplateString = plainString;
-                TemplateArguments = new object[] { };
+                TemplateString = templateString;
+                TemplateArguments = templateArguments;
             }
 
             public string TemplateString { get; }
-            public IList<object?> TemplateArguments { get; }
+            public object?[] TemplateArguments { get; }
+
+            public bool Preprocess => true;
+            public bool ConformToAmbientIndentation => true;
+            public override bool IsEmpty => false;
         }
 
-        protected class FormatData
+        class RenderableData : Renderable
         {
-            public FormatData(string guid, string? formatSpecifier, object? arg, IFormatProvider? formatProvider)
+            public RenderableData(FormatArg formatArg, bool preprocess, bool conformToAmbientIndentation)
             {
-                Guid = guid;
-                FormatSpecifier = formatSpecifier;
-                Arg = arg;
-                FormatProvider = formatProvider;
+                FormatArg = formatArg;
+                Preprocess = preprocess;
+                ConformToAmbientIndentation = conformToAmbientIndentation;
             }
 
-            public string Guid { get; }
-            public string? FormatSpecifier { get; }
+            public FormatArg FormatArg { get; }
+            public bool Preprocess { get; }
+            public bool ConformToAmbientIndentation { get; }
+
+            public override bool IsEmpty => false;
+        }
+
+        class CompoundRenderable : Renderable
+        {
+            public CompoundRenderable(IList<Renderable> renderables, Func<IEnumerable<string>, string>? combinator)
+            {
+                Renderables = renderables;
+                Combinator = combinator;
+            }
+
+            public IList<Renderable> Renderables { get; }
+            public Func<IEnumerable<string>, string>? Combinator { get; }
+
+            public override bool IsEmpty => Renderables.All(t => t.IsEmpty);
+        }
+
+        protected class FormatArg
+        {
+            public FormatArg(object? arg, string? formatSpecifier)
+            {
+                Arg = arg;
+                FormatSpecifier = formatSpecifier;
+            }
+
             public object? Arg { get; }
-            public IFormatProvider? FormatProvider { get; }
+            public string? FormatSpecifier { get; }
 
             public bool HasFormatSpecifier(params string[] tests)
             {
                 return tests.Any(test => HasFormatSpecifier(test, out var _));
             }
 
-            public bool HasFormatSpecifier(string test, out FormatData rest)
+            public bool HasFormatSpecifier(string test, out FormatArg rest)
             {
                 if (string.IsNullOrWhiteSpace(FormatSpecifier))
                 {
@@ -160,13 +241,13 @@
 
                 if (trimmedFormat.Equals(test, StringComparison.OrdinalIgnoreCase))
                 {
-                    rest = new FormatData(Guid, null, Arg, FormatProvider);
+                    rest = new FormatArg(Arg, null);
                     return true;
                 }
 
                 if (trimmedFormat.StartsWith(test + ":", StringComparison.OrdinalIgnoreCase))
                 {
-                    rest = new FormatData(Guid, trimmedFormat.Substring(test.Length + 1), Arg, FormatProvider);
+                    rest = new FormatArg(Arg, trimmedFormat.Substring(test.Length + 1));
                     return true;
                 }
 
@@ -177,15 +258,15 @@
 
         class GuidReplacingFormatter : IFormatProvider, ICustomFormatter
         {
-            public IList<FormatData> FormatReplacements { get; } = new List<FormatData>();
+            public IDictionary<string, FormatArg> FormatReplacements { get; } = new Dictionary<string, FormatArg>();
 
             public string Format(string? format, object? arg, IFormatProvider? formatProvider)
             {
                 var guid = Guid.NewGuid().ToString();
-                
-                var formatData = new FormatData(guid, format, arg, formatProvider);
 
-                FormatReplacements.Add(formatData);
+                var formatArg = new FormatArg(arg, format);
+
+                FormatReplacements.Add(guid, formatArg);
 
                 return guid;
             }
@@ -222,11 +303,7 @@
                     firstIndex = 1;
                 }
 
-                var baselineIndentationLength = CalculateIndentationLength(
-                    stringLines
-                        .Skip(removedEmptyFirstLine ? 0 : 1)
-                        .FirstOrDefault(s => !string.IsNullOrWhiteSpace(s)) ?? "",
-                    tabWidth);
+                var baselineIndentationLength = CalculateBaselineIndentationLength(stringLines, tabWidth, removedEmptyFirstLine);
 
                 for (var i = firstIndex; i < stringLines.Length; i++)
                 {
@@ -241,7 +318,28 @@
                     stringLines[i] = line;
                 }
 
-                return string.Join(Environment.NewLine, firstIndex, stringLines.Length - firstIndex);
+                return string.Join(Environment.NewLine, stringLines, firstIndex, stringLines.Length - firstIndex);
+            }
+
+            private static int CalculateBaselineIndentationLength(IList<string> lines, int tabWidth, bool removedEmptyFirstLine)
+            {
+                if (removedEmptyFirstLine)
+                {
+                    return CalculateIndentationLength(
+                        lines
+                            .Skip(1)
+                            .FirstOrDefault(s => !string.IsNullOrWhiteSpace(s)) ?? "",
+                        tabWidth);
+                }
+                else
+                {
+                    return lines
+                        .Skip(1)
+                        .Where(s => !string.IsNullOrWhiteSpace(s))
+                        .Select(line => CalculateIndentationLength(line, tabWidth))
+                        .DefaultIfEmpty()
+                        .Min();
+                }
             }
 
             private static string AddIndentation(string str, string indentation)
@@ -390,27 +488,6 @@
                     indentation: indentation,
                     occupiesEntireLine: !foundNonWhitespaceBeforeOccurence && !foundNonWhitespaceAfterOccurence,
                     isFoundOnFirstLine);
-            }
-        }
-
-        class ReplacementInstructions
-        {
-            public ReplacementInstructions(string replacement, int replacePositionStart, int replacePositionEnd)
-            {
-                Replacement = replacement;
-                ReplacePositionStart = replacePositionStart;
-                ReplacePositionEnd = replacePositionEnd;
-            }
-
-            public string Replacement { get; }
-            public int ReplacePositionStart { get; }
-            public int ReplacePositionEnd { get; }
-
-            public string ExecuteReplacement(string str)
-            {
-                return str
-                    .Remove(ReplacePositionStart, ReplacePositionEnd - ReplacePositionStart + 1)
-                    .Insert(ReplacePositionStart, Replacement);
             }
         }
     }
