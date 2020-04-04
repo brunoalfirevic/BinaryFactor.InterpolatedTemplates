@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29519.87
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BinaryFactor.SmartIndentation", "BinaryFactor.SmartIndentation\BinaryFactor.SmartIndentation.csproj", "{EE69EFD5-BB3D-44B9-9A17-C1E43E74F403}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BinaryFactor.InterpolatedTemplates", "BinaryFactor.InterpolatedTemplates\BinaryFactor.InterpolatedTemplates.csproj", "{EE69EFD5-BB3D-44B9-9A17-C1E43E74F403}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BinaryFactor.SmartIndentation.Samples", "BinaryFactor.SmartIndentation.Samples\BinaryFactor.SmartIndentation.Samples.csproj", "{A5ACA534-33F8-4B5B-B671-52BEA703F20C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BinaryFactor.InterpolatedTemplates.Samples", "BinaryFactor.InterpolatedTemplates.Samples\BinaryFactor.InterpolatedTemplates.Samples.csproj", "{A5ACA534-33F8-4B5B-B671-52BEA703F20C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BinaryFactor.SmartIndentation.Tests", "BinaryFactor.SmartIndentation.Tests\BinaryFactor.SmartIndentation.Tests.csproj", "{FE5CA82C-2CCC-4E15-B496-55A3954A5627}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BinaryFactor.InterpolatedTemplates.Tests", "BinaryFactor.InterpolatedTemplates.Tests\BinaryFactor.InterpolatedTemplates.Tests.csproj", "{FE5CA82C-2CCC-4E15-B496-55A3954A5627}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -1,4 +1,4 @@
-﻿namespace BinaryFactor.SmartIndentation.Samples.Sql
+﻿namespace BinaryFactor.InterpolatedTemplates.Samples.Sql
 {
     using System;
 

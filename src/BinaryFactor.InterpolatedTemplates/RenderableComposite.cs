@@ -1,4 +1,4 @@
-﻿namespace BinaryFactor.SmartIndentation
+﻿namespace BinaryFactor.InterpolatedTemplates
 {
     using System;
     using System.Collections.Generic;

@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\BinaryFactor.SmartIndentation\BinaryFactor.SmartIndentation.csproj" />
+    <ProjectReference Include="..\BinaryFactor.InterpolatedTemplates\BinaryFactor.InterpolatedTemplates.csproj" />
   </ItemGroup>
 
 </Project>

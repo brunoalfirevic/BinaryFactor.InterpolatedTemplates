@@ -1,4 +1,4 @@
-﻿namespace BinaryFactor.SmartIndentation.Tests
+﻿namespace BinaryFactor.InterpolatedTemplates.Tests
 {
     public class InterpolatedTemplateProcessorTests
     {

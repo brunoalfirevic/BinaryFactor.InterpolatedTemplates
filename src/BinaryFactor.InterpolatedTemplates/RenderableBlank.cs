@@ -1,4 +1,4 @@
-﻿namespace BinaryFactor.SmartIndentation
+﻿namespace BinaryFactor.InterpolatedTemplates
 {
     partial class InterpolatedTemplateProcessor
     {

@@ -1,4 +1,4 @@
-﻿namespace BinaryFactor.SmartIndentation.Samples.Html
+﻿namespace BinaryFactor.InterpolatedTemplates.Samples.Html
 {
     using System.Net;
 
