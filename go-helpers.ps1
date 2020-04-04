@@ -26,21 +26,6 @@ function exec($command, $path) {
     }
 }
 
-function with-location($location, $callback) {
-    if ($null -ne $location) {
-        Push-Location $path
-    }
-
-    try {
-        & $callback
-    }
-    finally {
-        if ($null -ne $path) {
-            Pop-Location
-        }
-    }
-}
-
 function exec-ignore-exit-code($command, $path) {
     with-location $path {
         $global:lastexitcode = 0
@@ -48,6 +33,21 @@ function exec-ignore-exit-code($command, $path) {
         Write-Host $ExecutionContext.InvokeCommand.ExpandString($command) -fore DarkGray
 
         & $command
+    }
+}
+
+function with-location($location, $callback) {
+    if ($null -ne $location) {
+        Push-Location $location
+    }
+
+    try {
+        & $callback
+    }
+    finally {
+        if ($null -ne $location) {
+            Pop-Location
+        }
     }
 }
 
