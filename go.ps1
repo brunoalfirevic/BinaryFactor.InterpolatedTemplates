@@ -4,11 +4,7 @@
 
 . .\go-helpers
 
-$dotnet_full_version = "net461"
-$dotnet_core_version = "netcoreapp3.0"
-
-$main_project = "Relator"
-$test_project = "Relator.Tests"
+$project_name = "InterpolatedTemplates"
 
 function clean {
     info "Cleaning build artifacts"
@@ -27,34 +23,37 @@ function rebuild {
 
 function test {
     info "Running tests using .NET Core"
-    exec {dotnet run --project "src/$test_project" --framework $dotnet_core_version}
+    exec {dotnet run --project src/BinaryFactor.$project_name.Tests}
 }
 
 function watch-test {
-    exec {dotnet watch --project "src/$test_project" run}
+    exec {dotnet watch --project src/BinaryFactor.$project_name.Tests run}
 }
 
-function watch-build {
-    exec {dotnet watch --project "src/$test_project" build /nologo}
-}
-
-function test-full {
-    info "Running tests using .NET Full Framework"
-    exec {dotnet run --project "src/$test_project" --framework $dotnet_full_version}
-}
-
-function publish {
+function pack-nuget {
     info "Deleting 'publish' folder"
     remove-folder "./publish"
 
-    info "Publishing to 'publish' folder"
-    exec {dotnet publish "src/$main_project" -c Release --self-contained true -o ./publish/RelatorNet /nologo}
+    info "Packing NuGet package"
+    exec {dotnet pack src -c Release -o publish /nologo}
+}
+
+function push-to-nuget {
+    pack-nuget
+
+    info "Publishing NuGet package"
+    $nuget_package = Get-ChildItem -Path publish -Filter *.nupkg -File
+    exec {dotnet nuget push publish\$nuget_package --source nuget.org}
+}
+
+function unlist-from-nuget {
+    info "Unlisting NuGet package"
+    exec {dotnet nuget delete BinaryFactor.$project_name $($arguments[0]) --non-interactive --source nuget.org}
 }
 
 function go {
     rebuild
     test
-    test-full
 }
 
 main {
@@ -70,9 +69,11 @@ Available commands:
     rebuild
 
     test
-    test-full
     watch-test
-    watch-build
+
+    pack-nuget
+    push-to-nuget
+    unlist-from-nuget
 "@
     }
 }
