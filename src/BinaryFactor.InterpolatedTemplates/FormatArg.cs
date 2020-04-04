@@ -41,7 +41,7 @@
                     return false;
                 }
 
-                var trimmedFormat = FormatSpecifier.Trim();
+                var trimmedFormat = FormatSpecifier?.Trim() ?? "";
 
                 if (trimmedFormat.Equals(test, StringComparison.OrdinalIgnoreCase))
                 {
