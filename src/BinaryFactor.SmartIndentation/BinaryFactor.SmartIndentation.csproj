@@ -1,10 +1,18 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
     <TargetFrameworks>netcoreapp3.0;netstandard2.0</TargetFrameworks>
     <LangVersion>8</LangVersion>
     <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Authors>Bruno Alfirević</Authors>
+    <Description>
+      Frictionless and extendable .NET templating engine that leverages built-in language support for interpolated strings.
+    </Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/brunoalfirevic/BinaryFactor.InterpolatedTemplates</PackageProjectUrl>
   </PropertyGroup>
 
 </Project>
