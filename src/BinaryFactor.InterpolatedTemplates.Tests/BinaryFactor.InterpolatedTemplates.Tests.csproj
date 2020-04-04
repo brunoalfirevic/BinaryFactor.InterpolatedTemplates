@@ -11,4 +11,9 @@
     <PackageReference Include="Shouldly" Version="3.0.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\BinaryFactor.InterpolatedTemplates.Samples\BinaryFactor.InterpolatedTemplates.Samples.csproj" />
+    <ProjectReference Include="..\BinaryFactor.InterpolatedTemplates\BinaryFactor.InterpolatedTemplates.csproj" />
+  </ItemGroup>
+
 </Project>
