@@ -9,7 +9,7 @@
   <PropertyGroup>
     <Authors>Bruno Alfirević</Authors>
     <Description>
-      Frictionless and extendable .NET templating engine that leverages built-in language support for interpolated strings.
+      Frictionless and extensible .NET templating engine that leverages built-in language support for interpolated strings.
     </Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/brunoalfirevic/BinaryFactor.InterpolatedTemplates</PackageProjectUrl>
