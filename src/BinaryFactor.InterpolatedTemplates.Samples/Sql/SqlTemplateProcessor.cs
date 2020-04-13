@@ -73,7 +73,7 @@ namespace BinaryFactor.InterpolatedTemplates.Samples.Sql
                 case uint _:
                 case long _:
                 case ulong _:
-                    return sqlParameter.Value.ToString();
+                    return sqlParameter.Value.ToString()!;
 
                 case bool b:
                     return b ? "TRUE" : "FALSE";
