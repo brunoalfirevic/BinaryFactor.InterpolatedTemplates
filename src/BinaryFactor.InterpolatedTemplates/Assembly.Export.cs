@@ -5,5 +5,8 @@ namespace BinaryFactor.InterpolatedTemplates
 {
     public partial class InterpolatedTemplateProcessor { }
 
-    public partial class FormattableStringEnumerableExtensions { }
+    namespace Extensions
+    {
+        public partial class FormattableStringEnumerableExtensions { }
+    }
 }

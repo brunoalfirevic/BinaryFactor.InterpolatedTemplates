@@ -5,6 +5,7 @@ namespace BinaryFactor.InterpolatedTemplates.Samples.Sql
 {
     using System;
     using System.Collections.Generic;
+    using BinaryFactor.InterpolatedTemplates.Extensions;
 
     public class SqlTemplateProcessor : InterpolatedTemplateProcessor
     {
