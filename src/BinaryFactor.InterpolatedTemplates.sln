@@ -12,6 +12,9 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8E96C3FA-0B9D-4673-A5B5-931C1C8E5674}"
 	ProjectSection(SolutionItems) = preProject
 		..\.gitignore = ..\.gitignore
+		BinaryFactor.InterpolatedTemplates.sln.licenseheader = BinaryFactor.InterpolatedTemplates.sln.licenseheader
+		Directory.Build.props = Directory.Build.props
+		..\global.json = ..\global.json
 		..\go-helpers.ps1 = ..\go-helpers.ps1
 		..\go.bat = ..\go.bat
 		..\go.ps1 = ..\go.ps1
